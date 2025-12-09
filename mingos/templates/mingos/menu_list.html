@@ -1,0 +1,80 @@
+{% extends "mingos/base.html" %}
+{% block title %}Menu – Mingos{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Mingos Menu</div>
+    <div class="page-subtitle">Current menu items grouped by category.</div>
+  </div>
+  <a href="{% url 'create_order' %}" class="pill">Create New Order</a>
+</div>
+
+<div class="card">
+  {% if categories %}
+    {% for category in categories %}
+      <h2 style="font-size: 1rem; margin-bottom: 6px; margin-top: 12px;">
+        {{ category.name }}
+      </h2>
+
+      {% if category.description %}
+      <div class="muted" style="margin-bottom: 8px;">{{ category.description }}</div>
+      {% endif %}
+
+      <table style="margin-bottom: 10px;">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Price (₹)</th>
+            <th>Veg</th>
+            <th>Spice</th>
+            <th>Available</th>
+            <th>Actions</th>   <!-- 🔥 NEW COLUMN -->
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for item in category.items.all %}
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.price|floatformat:2 }}</td>
+            <td>{% if item.is_vegetarian %}Yes{% else %}No{% endif %}</td>
+            <td>{{ item.spice_level|default:"-" }}</td>
+            <td>
+              {% if item.is_available %}
+                Available
+              {% else %}
+                <span class="muted">Out of stock</span>
+              {% endif %}
+            </td>
+
+            <!-- 🔥 ACTION BUTTONS -->
+            <td>
+              <a href="{% url 'recipe_detail' item.pk %}" class="pill" style="margin-right: 6px;">
+                View
+              </a>
+              <a href="{% url 'recipe_view_edit' item.pk %}" class="pill">
+                Edit
+              </a>
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="muted">No items in this category.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if not forloop.last %}
+      <hr style="border: none; border-top: 1px solid rgba(31,41,55,0.8); margin: 8px 0 4px;">
+      {% endif %}
+
+    {% endfor %}
+  {% else %}
+    <p class="muted">No categories or items defined yet. Use Django admin to add them.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

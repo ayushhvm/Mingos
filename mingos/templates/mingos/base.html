@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}Mingos Dashboard{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Simple clean styling -->
+    <style>
+      :root {
+        --bg: #0f172a;
+        --bg-card: #111827;
+        --accent: #22c55e;
+        --accent-soft: rgba(34, 197, 94, 0.12);
+        --text-main: #e5e7eb;
+        --text-muted: #9ca3af;
+        --border-subtle: #1f2937;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          sans-serif;
+        background: radial-gradient(circle at top, #1e293b 0, #020617 55%);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+      }
+      .sidebar {
+        width: 260px;
+        background: rgba(15, 23, 42, 0.96);
+        border-right: 1px solid var(--border-subtle);
+        padding: 24px 20px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+      }
+      .logo {
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .logo-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: radial-gradient(
+          circle at 30% 30%,
+          #4ade80,
+          #16a34a 60%,
+          #16a34a 100%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        color: #022c22;
+        font-weight: 900;
+      }
+      .nav-group-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        margin: 20px 0 8px;
+      }
+      .nav-link {
+        display: block;
+        padding: 9px 10px;
+        border-radius: 10px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        text-decoration: none;
+        margin-bottom: 4px;
+        transition: 0.15s ease;
+      }
+      .nav-link:hover {
+        background: rgba(30, 64, 175, 0.35);
+        color: #e5e7eb;
+        transform: translateX(2px);
+      }
+      .nav-link.active {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .main {
+        flex: 1;
+        padding: 20px 28px 32px;
+        overflow-y: auto;
+      }
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+      .page-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+      }
+      .page-subtitle {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+      }
+      .pill {
+        font-size: 0.75rem;
+        border-radius: 999px;
+        padding: 4px 10px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        color: var(--text-muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+      .grid-4 {
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      }
+      .grid-2 {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+
+      .card {
+        background: linear-gradient(
+          145deg,
+          rgba(15, 23, 42, 0.96),
+          rgba(15, 23, 42, 0.96)
+        );
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        padding: 16px 18px 18px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.8);
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .card-title {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+      .card-value {
+        font-size: 1.35rem;
+        font-weight: 600;
+      }
+      .chip {
+        font-size: 0.75rem;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: var(--text-muted);
+      }
+      .chip-positive {
+        color: #4ade80;
+        border-color: rgba(74, 222, 128, 0.5);
+      }
+      .chip-warning {
+        color: #f97316;
+        border-color: rgba(249, 115, 22, 0.6);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+      }
+      th {
+        text-align: left;
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 0.8rem;
+      }
+      tr:hover td {
+        background: rgba(15, 23, 42, 0.85);
+      }
+
+      .muted {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 220px !important;
+      }
+
+      @media (max-width: 900px) {
+        .sidebar {
+          display: none;
+        }
+        body {
+          display: block;
+        }
+        .main {
+          padding: 16px;
+        }
+      }
+    </style>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-badge">M</div>
+        Mingos Canteen
+      </div>
+
+      <!-- Overview Section -->
+      <div>
+        <div class="nav-group-label">Overview</div>
+        <a
+          href="{% url 'dashboard' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+        >
+          📊 Dashboard
+        </a>
+      </div>
+
+      <!-- Orders Management -->
+      <div>
+        <div class="nav-group-label">Orders</div>
+        <a
+          href="{% url 'recent_orders' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'recent_orders' %}active{% endif %}"
+        >
+          📋 Recent Orders
+        </a>
+
+        <a
+          href="{% url 'create_order' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'create_order' %}active{% endif %}"
+        >
+          ➕ Create Order
+        </a>
+      </div>
+
+      <!-- Menu Management -->
+      <div>
+        <div class="nav-group-label">Menu</div>
+        <a
+          href="{% url 'menu_list' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'menu_list' %}active{% endif %}"
+        >
+          🍽️ Menu Items
+        </a>
+      </div>
+
+      <!-- Analytics Section -->
+      <div>
+        <div class="nav-group-label">Analytics</div>
+
+        <a
+          href="{% url 'sales_analytics' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'sales_analytics' %}active{% endif %}"
+        >
+          💰 Sales Analytics
+        </a>
+
+        <a
+          href="{% url 'inventory_analytics' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'inventory_analytics' %}active{% endif %}"
+        >
+          📦 Inventory Analytics
+        </a>
+      </div>
+
+      <!-- Admin -->
+      <div>
+        <div class="nav-group-label">Admin</div>
+        <a href="/admin/" class="nav-link"> ⚙️ Django Admin </a>
+      </div>
+    </aside>
+
+    <main class="main">{% block content %}{% endblock %}</main>
+  </body>
+</html>

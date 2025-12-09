@@ -1,0 +1,62 @@
+{% extends "mingos/base.html" %}
+
+{% block title %}Recipe – {{ menu_item.name }}{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Recipe for {{ menu_item.name }}</div>
+    <div class="page-subtitle">
+      View and edit the full ingredient breakdown for this menu item.
+    </div>
+  </div>
+  <a href="{% url 'menu_list' %}" class="pill">Back to Menu</a>
+</div>
+
+<div class="card">
+    <form method="post">
+      {% csrf_token %}
+      <table>
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Quantity Required</th>
+            <th>Unit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ing in ingredients %}
+          <tr>
+            <td>{{ ing.name }}</td>
+            <td>
+              <input
+                type="number"
+                name="ing_{{ ing.pk }}"
+                step="0.01"
+                min="0"
+                value="{{ ing.current_qty|default:'0' }}"
+                style="width: 100px; padding: 4px; border-radius: 6px;
+                       border: 1px solid rgba(55,65,81,0.9);
+                       background: #020617; color: #e5e7eb;"
+              >
+            </td>
+            <td>{{ ing.unit_of_measure }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+  
+      <div style="margin-top: 16px; display:flex; gap:12px;">
+        <button type="submit"
+          style="padding: 8px 18px; border-radius: 999px; border: none;
+                 background: linear-gradient(135deg,#22c55e,#16a34a);
+                 color:#022c22; font-weight:600; cursor:pointer;">
+          Save Recipe
+        </button>
+        <a href="{% url 'menu_list' %}" class="pill">Cancel</a>
+      </div>
+    </form>
+  </div>
+  
+  {% endblock %}

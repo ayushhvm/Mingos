@@ -1,0 +1,196 @@
+{% extends "mingos/base.html" %} {% block title %} Mingos – Dashboard {% endblock %} {% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Dashboard</div>
+    <div class="page-subtitle">
+      Live snapshot of sales, menu performance & stock alerts.
+    </div>
+  </div>
+  <div class="pill">Mingos Analytics • {{ total_orders }} orders</div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom: 18px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Total Revenue</div>
+      <span class="chip chip-positive">Live</span>
+    </div>
+    <div class="card-value">₹ {{ total_revenue|floatformat:2 }}</div>
+    <div class="muted">All-time gross sales.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Total Orders</div>
+    </div>
+    <div class="card-value">{{ total_orders }}</div>
+    <div class="muted">Customer orders recorded.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Menu Items</div>
+    </div>
+    <div class="card-value">{{ total_menu_items }}</div>
+    <div class="muted">Active items on Mingos menu.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Low Stock Ingredients</div>
+      {% if low_stock_count > 0 %}
+      <span class="chip chip-warning">{{ low_stock_count }} alert(s)</span>
+      {% endif %}
+    </div>
+    <div class="card-value">{{ low_stock_count }}</div>
+    <div class="muted">Below reorder level.</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom: 18px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Daily Sales (Last 7 Days)</div>
+    </div>
+    <canvas id="dailySalesChart"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Top 5 Items by Revenue</div>
+    </div>
+    <canvas id="topItemsChart"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Revenue by Category</div>
+  </div>
+  <div
+    style="
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr);
+      gap: 18px;
+      align-items: center;
+    "
+  >
+    <canvas id="categoryChart"></canvas>
+
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Revenue (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in category_data %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td>{{ row.value|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="muted">No category-wise data yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // Directly injected JSON from Django
+  const dailyLabels = {{ daily_labels_json|safe }};
+  const dailyTotals = {{ daily_totals_json|safe }};
+  const topItemsLabels = {{ top_items_labels_json|safe }};
+  const topItemsSales = {{ top_items_sales_json|safe }};
+  const categoryLabels = {{ category_labels_json|safe }};
+  const categoryValues = {{ category_values_json|safe }};
+
+  // Daily Sales (bar)
+  new Chart(document.getElementById('dailySalesChart'), {
+    type: 'bar',
+    data: {
+      labels: dailyLabels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Revenue (₹)',
+          data: dailyTotals,
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: '#e5e7eb' } }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#9ca3af' },
+          grid: { display: false }
+        },
+        y: {
+          ticks: { color: '#9ca3af' },
+          grid: { color: 'rgba(55,65,81,0.5)' }
+        }
+      }
+    }
+  });
+
+  // Top 5 items (horizontal bar)
+  new Chart(document.getElementById('topItemsChart'), {
+    type: 'bar',
+    data: {
+      labels: topItemsLabels,
+      datasets: [{
+        label: 'Revenue (₹)',
+        data: topItemsSales,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#9ca3af' },
+          grid: { color: 'rgba(55,65,81,0.5)' }
+        },
+        y: {
+          ticks: { color: '#9ca3af' },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  // Category share (doughnut)
+  new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: {
+      labels: categoryLabels,
+      datasets: [{
+        data: categoryValues
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#e5e7eb' }
+        }
+      },
+      cutout: '65%'
+    }
+  });
+</script>
+
+{% endblock %}

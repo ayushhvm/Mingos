@@ -1,0 +1,80 @@
+{% extends "mingos/base.html" %} {% block title %}Sales Analytics – Mingos {% endblock %} {% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Sales Analytics</div>
+    <div class="page-subtitle">
+      Orders, revenue and performance of menu items.
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Daily Revenue (Last 7 Days)</div>
+    </div>
+    <canvas id="dailySalesChart"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Top 10 Items</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Qty Sold</th>
+          <th>Revenue (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_items %}
+        <tr>
+          <td>{{ row.menu_item__name }}</td>
+          <td>{{ row.total_qty }}</td>
+          <td>{{ row.total_sales|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="muted">No data yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const dailyLabels = {{ daily_labels_json|safe }};
+  const dailyTotals = {{ daily_totals_json|safe }};
+
+  new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: {
+      labels: categoryLabels,
+      datasets: [{
+        data: categoryValues,
+        borderWidth: 0,        // remove thick white border
+        // you can also manually set colors here if you want
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: 20            // add breathing room inside the card
+      },
+      plugins: {
+        legend: {
+          position: 'right',   // keep legend on the right
+          labels: { color: '#e5e7eb' }
+        }
+      },
+      cutout: '75%',           // bigger cutout => thinner ring
+      radius: '70%'            // smaller radius => chart doesn’t touch edges
+    }
+  });
+</script>
+
+{% endblock %}

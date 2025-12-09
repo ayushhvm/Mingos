@@ -1,0 +1,85 @@
+{% extends "mingos/base.html" %}
+
+{% block title %}Create Order – Mingos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Create Order</div>
+    <div class="page-subtitle">Select quantities for items and submit to create a customer order.</div>
+  </div>
+  <a href="{% url 'menu_list' %}" class="pill">Back to Menu</a>
+</div>
+
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+
+    {% if error %}
+      <p style="color: #f97316; margin-bottom: 10px; font-size: 0.9rem;">{{ error }}</p>
+    {% endif %}
+
+    {% if categories %}
+      {% for category in categories %}
+        <h2 style="font-size: 1rem; margin-bottom: 6px; margin-top: 12px;">
+          {{ category.name }}
+        </h2>
+        <table style="margin-bottom: 10px;">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Price (₹)</th>
+              <th>Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in category.items.all %}
+            <tr>
+              <td>
+                {{ item.name }}
+                {% if not item.is_available %}
+                  <span class="muted">(Not available)</span>
+                {% endif %}
+              </td>
+              <td>{{ item.price|floatformat:2 }}</td>
+              <td>
+                {% if item.is_available %}
+                  <input
+                    type="number"
+                    name="item_{{ item.pk }}"
+                    min="0"
+                    value="0"
+                    style="width: 70px; padding: 4px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb;"
+                  >
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="3" class="muted">No items in this category.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if not forloop.last %}
+          <hr style="border: none; border-top: 1px solid rgba(31,41,55,0.8); margin: 8px 0 4px;">
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <p class="muted">No menu items available. Please add them from Django admin.</p>
+    {% endif %}
+
+    <div style="margin-top: 14px; display: flex; gap: 10px;">
+      <button type="submit"
+        style="padding: 8px 16px; border-radius: 999px; border: none; cursor: pointer;
+               background: linear-gradient(135deg, #22c55e, #16a34a); color: #022c22;
+               font-weight: 600; font-size: 0.9rem;">
+        Place Order
+      </button>
+      <a href="{% url 'dashboard' %}" class="pill">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

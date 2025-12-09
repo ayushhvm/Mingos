@@ -1,0 +1,38 @@
+{% extends "mingos/base.html" %}
+{% block title %}Recipe – {{ menu_item.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ menu_item.name }} – Recipe</div>
+    <div class="page-subtitle">Complete ingredient breakdown</div>
+  </div>
+  <a href="{% url 'recipe_view_edit' menu_item.pk %}" class="pill">Edit Recipe</a>
+</div>
+
+<div class="card">
+  {% if recipe_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th>Quantity</th>
+          <th>Unit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recipe_rows %}
+        <tr>
+          <td>{{ r.ingredient.name }}</td>
+          <td>{{ r.quantity_required }}</td>
+          <td>{{ r.ingredient.unit_of_measure }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No recipe defined yet for this item.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

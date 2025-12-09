@@ -1,0 +1,76 @@
+{% extends "mingos/base.html" %} 
+{% block title %}Inventory Analytics – Mingos{% endblock %} 
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Inventory Analytics</div>
+    <div class="page-subtitle">
+      Monitor low-stock ingredients and recent purchase orders.
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Low Stock Ingredients</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th>Current</th>
+          <th>Reorder Level</th>
+          <th>Unit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ing in low_stock %}
+        <tr>
+          <td>{{ ing.name }}</td>
+          <td>{{ ing.current_stock_qty }}</td>
+          <td>{{ ing.reorder_level }}</td>
+          <td>{{ ing.unit_of_measure }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="muted">No low stock items 🎉</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Purchase Orders</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>PO #</th>
+          <th>Supplier</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Amount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for po in recent_pos %}
+        <tr>
+          <td>{{ po.po_id }}</td>
+          <td>{{ po.supplier.name }}</td>
+          <td>{{ po.order_date }}</td>
+          <td>{{ po.status }}</td>
+          <td>{{ po.total_amount|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="muted">No purchase orders yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

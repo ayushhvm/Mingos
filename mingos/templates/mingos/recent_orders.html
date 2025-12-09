@@ -1,0 +1,91 @@
+{% extends "mingos/base.html" %}
+
+{% block title %}Recent Orders – Mingos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Recent Orders</div>
+    <div class="page-subtitle">Latest customer orders with item breakdown.</div>
+  </div>
+  <a href="{% url 'create_order' %}" class="pill">New Order</a>
+</div>
+
+<div class="card">
+  {% if orders %}
+    <table>
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Date &amp; Time</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Items</th>
+          <th>Total Qty</th>
+          <th>Total (₹)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td>#{{ order.order_id }}</td>
+          <td>{{ order.order_datetime }}</td>
+          <td>{{ order.order_type }}</td>
+          <td>{{ order.order_status }}</td>
+          <td>{{ order.item_count|default:"0" }}</td>
+          <td>{{ order.total_qty|default:"0" }}</td>
+          <td>{{ order.total_amount|floatformat:2 }}</td>
+          <td>
+            <button
+              type="button"
+              onclick="toggleDetails('{{ order.order_id }}')"
+              style="padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(148,163,184,0.45); background: #020617; color: #e5e7eb; font-size: 0.75rem; cursor: pointer;">
+              Details
+            </button>
+          </td>
+        </tr>
+        <tr id="order-details-{{ order.order_id }}" style="display: none;">
+          <td colspan="8">
+            <table style="margin-top: 6px;">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Unit Price (₹)</th>
+                  <th>Line Total (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                  <td>{{ item.menu_item.name }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>{{ item.unit_price|floatformat:2 }}</td>
+                  <td>{{ item.line_amount|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="muted">No items for this order.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No orders recorded yet. Create one from the <a href="{% url 'create_order' %}" style="color:#22c55e;">Create Order</a> page.</p>
+  {% endif %}
+</div>
+
+<script>
+  function toggleDetails(id) {
+    const row = document.getElementById('order-details-' + id);
+    if (!row) return;
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+  }
+</script>
+{% endblock %}
