@@ -1,4 +1,6 @@
-{% extends "mingos/base.html" %} {% block title %}Sales Analytics – Mingos {% endblock %} {% block content %}
+{% extends "mingos/base.html" %} 
+{% block title %}Sales Analytics – Mingos{% endblock %} 
+{% block content %}
 <div class="page-header">
   <div>
     <div class="page-title">Sales Analytics</div>
@@ -45,34 +47,43 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   const dailyLabels = {{ daily_labels_json|safe }};
   const dailyTotals = {{ daily_totals_json|safe }};
 
-  new Chart(document.getElementById('categoryChart'), {
-    type: 'doughnut',
+  // Daily Sales Chart
+  new Chart(document.getElementById('dailySalesChart'), {
+    type: 'bar',
     data: {
-      labels: categoryLabels,
+      labels: dailyLabels,
       datasets: [{
-        data: categoryValues,
-        borderWidth: 0,        // remove thick white border
-        // you can also manually set colors here if you want
+        label: 'Revenue (₹)',
+        data: dailyTotals,
+        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+        borderColor: 'rgba(34, 197, 94, 1)',
+        borderWidth: 2,
+        borderRadius: 6
       }]
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
-      layout: {
-        padding: 20            // add breathing room inside the card
-      },
+      maintainAspectRatio: true,
       plugins: {
         legend: {
-          position: 'right',   // keep legend on the right
           labels: { color: '#e5e7eb' }
         }
       },
-      cutout: '75%',           // bigger cutout => thinner ring
-      radius: '70%'            // smaller radius => chart doesn’t touch edges
+      scales: {
+        x: {
+          ticks: { color: '#9ca3af' },
+          grid: { display: false }
+        },
+        y: {
+          ticks: { color: '#9ca3af' },
+          grid: { color: 'rgba(55,65,81,0.5)' }
+        }
+      }
     }
   });
 </script>

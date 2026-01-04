@@ -6,80 +6,239 @@
 <div class="page-header">
   <div>
     <div class="page-title">Create Order</div>
-    <div class="page-subtitle">Select quantities for items and submit to create a customer order.</div>
+    <div class="page-subtitle">Add items to order and place it</div>
   </div>
   <a href="{% url 'menu_list' %}" class="pill">Back to Menu</a>
 </div>
 
-<div class="card">
-  <form method="post">
-    {% csrf_token %}
-
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+  <!-- Add Items Section -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Add Items</div>
+    </div>
+    
     {% if error %}
       <p style="color: #f97316; margin-bottom: 10px; font-size: 0.9rem;">{{ error }}</p>
     {% endif %}
 
-    {% if categories %}
-      {% for category in categories %}
-        <h2 style="font-size: 1rem; margin-bottom: 6px; margin-top: 12px;">
-          {{ category.name }}
-        </h2>
-        <table style="margin-bottom: 10px;">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Price (₹)</th>
-              <th>Qty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in category.items.all %}
-            <tr>
-              <td>
-                {{ item.name }}
-                {% if not item.is_available %}
-                  <span class="muted">(Not available)</span>
-                {% endif %}
-              </td>
-              <td>{{ item.price|floatformat:2 }}</td>
-              <td>
-                {% if item.is_available %}
-                  <input
-                    type="number"
-                    name="item_{{ item.pk }}"
-                    min="0"
-                    value="0"
-                    style="width: 70px; padding: 4px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb;"
-                  >
-                {% else %}
-                  <span class="muted">—</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="3" class="muted">No items in this category.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% if not forloop.last %}
-          <hr style="border: none; border-top: 1px solid rgba(31,41,55,0.8); margin: 8px 0 4px;">
-        {% endif %}
-      {% endfor %}
-    {% else %}
-      <p class="muted">No menu items available. Please add them from Django admin.</p>
-    {% endif %}
+    <div style="margin-bottom: 14px;">
+      <label style="display: block; margin-bottom: 6px; font-size: 0.9rem; color: #9ca3af;">Item Name</label>
+      <input 
+        type="text" 
+        id="itemSearch" 
+        placeholder="Search items..."
+        style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb; font-size: 0.9rem;"
+      />
+      <div id="itemDropdown" style="display: none; position: absolute; z-index: 1000; background: #1f2937; border: 1px solid rgba(55,65,81,0.9); border-radius: 6px; max-height: 200px; overflow-y: auto; width: calc(50% - 27px); margin-top: 2px;">
+      </div>
+    </div>
 
-    <div style="margin-top: 14px; display: flex; gap: 10px;">
-      <button type="submit"
-        style="padding: 8px 16px; border-radius: 999px; border: none; cursor: pointer;
-               background: linear-gradient(135deg, #22c55e, #16a34a); color: #022c22;
-               font-weight: 600; font-size: 0.9rem;">
+    <div style="margin-bottom: 14px;">
+      <label style="display: block; margin-bottom: 6px; font-size: 0.9rem; color: #9ca3af;">Quantity</label>
+      <input 
+        type="number" 
+        id="itemQuantity" 
+        min="1" 
+        value="1"
+        style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb; font-size: 0.9rem;"
+      />
+    </div>
+
+    <button 
+      id="addItemBtn"
+      type="button"
+      style="padding: 8px 16px; border-radius: 999px; border: none; cursor: pointer; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-weight: 600; font-size: 0.9rem; width: 100%;"
+    >
+      Add to Order
+    </button>
+  </div>
+
+  <!-- Order Summary Section -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Order Summary</div>
+    </div>
+
+    <div id="orderItems" style="margin-bottom: 14px;">
+      <p class="muted" id="emptyMessage">No items added yet</p>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid rgba(31,41,55,0.8); margin: 12px 0;">
+    
+    <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 600; margin-bottom: 14px;">
+      <span>Total:</span>
+      <span id="totalAmount">₹ 0.00</span>
+    </div>
+
+    <form method="post" id="orderForm">
+      {% csrf_token %}
+      <div id="hiddenInputs"></div>
+      <button 
+        type="submit"
+        id="placeOrderBtn"
+        disabled
+        style="padding: 10px 20px; border-radius: 999px; border: none; cursor: pointer; background: linear-gradient(135deg, #22c55e, #16a34a); color: #022c22; font-weight: 600; font-size: 0.95rem; width: 100%;"
+      >
         Place Order
       </button>
-      <a href="{% url 'dashboard' %}" class="pill">Cancel</a>
-    </div>
-  </form>
+    </form>
+  </div>
 </div>
+
+<script>
+  // Store all menu items
+  const menuItems = {{ menu_items_json|safe }};
+  let orderItems = [];
+  let selectedItem = null;
+
+  const itemSearch = document.getElementById('itemSearch');
+  const itemDropdown = document.getElementById('itemDropdown');
+  const itemQuantity = document.getElementById('itemQuantity');
+  const addItemBtn = document.getElementById('addItemBtn');
+  const orderItemsDiv = document.getElementById('orderItems');
+  const totalAmountSpan = document.getElementById('totalAmount');
+  const hiddenInputs = document.getElementById('hiddenInputs');
+  const placeOrderBtn = document.getElementById('placeOrderBtn');
+  const emptyMessage = document.getElementById('emptyMessage');
+
+  // Filter and show dropdown
+  itemSearch.addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+      itemDropdown.style.display = 'none';
+      return;
+    }
+
+    const filtered = menuItems.filter(item => 
+      item.name.toLowerCase().includes(searchTerm) && item.is_available
+    );
+
+    if (filtered.length > 0) {
+      itemDropdown.innerHTML = filtered.map(item => `
+        <div class="dropdown-item" data-id="${item.id}" data-name="${item.name}" data-price="${item.price}" 
+             style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid rgba(55,65,81,0.5);">
+          <div style="font-weight: 500;">${item.name}</div>
+          <div style="font-size: 0.85rem; color: #9ca3af;">₹ ${parseFloat(item.price).toFixed(2)}</div>
+        </div>
+      `).join('');
+      
+      itemDropdown.style.display = 'block';
+
+      // Add click handlers
+      document.querySelectorAll('.dropdown-item').forEach(div => {
+        div.addEventListener('click', function() {
+          selectedItem = {
+            id: this.dataset.id,
+            name: this.dataset.name,
+            price: parseFloat(this.dataset.price)
+          };
+          itemSearch.value = selectedItem.name;
+          itemDropdown.style.display = 'none';
+        });
+      });
+    } else {
+      itemDropdown.innerHTML = '<div style="padding: 10px 12px; color: #9ca3af;">No items found</div>';
+      itemDropdown.style.display = 'block';
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!itemSearch.contains(e.target) && !itemDropdown.contains(e.target)) {
+      itemDropdown.style.display = 'none';
+    }
+  });
+
+  // Add item to order
+  addItemBtn.addEventListener('click', function() {
+    if (!selectedItem) {
+      alert('Please select an item');
+      return;
+    }
+
+    const quantity = parseInt(itemQuantity.value);
+    if (quantity <= 0) {
+      alert('Please enter a valid quantity');
+      return;
+    }
+
+    // Check if item already in order
+    const existingIndex = orderItems.findIndex(item => item.id === selectedItem.id);
+    if (existingIndex !== -1) {
+      orderItems[existingIndex].quantity += quantity;
+    } else {
+      orderItems.push({
+        id: selectedItem.id,
+        name: selectedItem.name,
+        price: selectedItem.price,
+        quantity: quantity
+      });
+    }
+
+    // Reset inputs
+    itemSearch.value = '';
+    itemQuantity.value = '1';
+    selectedItem = null;
+
+    renderOrder();
+  });
+
+  // Render order items
+  function renderOrder() {
+    if (orderItems.length === 0) {
+      orderItemsDiv.innerHTML = '<p class="muted" id="emptyMessage">No items added yet</p>';
+      placeOrderBtn.disabled = true;
+      placeOrderBtn.style.opacity = '0.5';
+      placeOrderBtn.style.cursor = 'not-allowed';
+      totalAmountSpan.textContent = '₹ 0.00';
+      hiddenInputs.innerHTML = '';
+      return;
+    }
+
+    let total = 0;
+    let html = '<table style="width: 100%; font-size: 0.9rem;"><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th><th></th></tr></thead><tbody>';
+    
+    orderItems.forEach((item, index) => {
+      const lineTotal = item.price * item.quantity;
+      total += lineTotal;
+      
+      html += `
+        <tr>
+          <td>${item.name}</td>
+          <td>₹ ${item.price.toFixed(2)}</td>
+          <td>${item.quantity}</td>
+          <td>₹ ${lineTotal.toFixed(2)}</td>
+          <td>
+            <button type="button" onclick="removeItem(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem; padding: 0 8px;">✕</button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += '</tbody></table>';
+    orderItemsDiv.innerHTML = html;
+    totalAmountSpan.textContent = '₹ ' + total.toFixed(2);
+
+    // Update hidden inputs for form submission
+    let inputs = '';
+    orderItems.forEach(item => {
+      inputs += `<input type="hidden" name="item_${item.id}" value="${item.quantity}">`;
+    });
+    hiddenInputs.innerHTML = inputs;
+
+    // Enable place order button
+    placeOrderBtn.disabled = false;
+    placeOrderBtn.style.opacity = '1';
+    placeOrderBtn.style.cursor = 'pointer';
+  }
+
+  // Remove item from order
+  function removeItem(index) {
+    orderItems.splice(index, 1);
+    renderOrder();
+  }
+</script>
+
 {% endblock %}

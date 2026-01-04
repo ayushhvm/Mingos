@@ -102,6 +102,33 @@
   </div>
 </div>
 
+<div class="card" style="margin-bottom: 18px">
+  <div class="card-header">
+    <div class="card-title">🤖 ML Sales Predictions – Next Day</div>
+  </div>
+  <div class="muted" style="margin-bottom: 12px">Polynomial regression model trained on 30-day historical sales data. Predictions help optimize inventory planning.</div>
+  
+  {% if predicted_items %}
+  <table>
+    <thead>
+      <tr>
+        <th>Menu Item</th>
+        <th>Predicted Qty</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in predicted_items %}
+      <tr>
+        <td>{{ item.name }}</td>
+        <td><strong>{{ item.predicted_qty }}</strong> units</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="muted">Not enough historical data to generate predictions yet. Create more orders!</div>
+  {% endif %}
+</div>
 
 <script>
   // Directly injected JSON from Django
