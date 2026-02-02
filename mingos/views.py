@@ -3,6 +3,7 @@ from django.db import transaction, models
 from django.db.models import Sum, Count, F, Case, When, Value, FloatField
 from django.shortcuts import get_object_or_404
 from django.contrib import messages
+from django.http import HttpResponse
 import json
 from datetime import timedelta, datetime
 from django.utils.timezone import now
@@ -10,6 +11,16 @@ from .models import CustomerOrder, OrderItem, Ingredient, MenuItem, MenuCategory
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+from reportlab.graphics.charts.piecharts import Pie
+from io import BytesIO
 
 
 def _get_last_7_days_sales():
@@ -445,3 +456,281 @@ def recipe_detail(request, item_id):
         "menu_item": menu_item,
         "recipe_rows": recipe_rows,
     })
+
+
+def report_generation(request):
+    """Report generation page with date range selection"""
+    today = now().date()
+    default_start = today - timedelta(days=7)
+    
+    return render(request, 'mingos/report_generation.html', {
+        'default_start_date': default_start.strftime('%Y-%m-%d'),
+        'default_end_date': today.strftime('%Y-%m-%d'),
+    })
+
+
+def generate_report_pdf(request):
+    """Generate comprehensive PDF report for custom date range"""
+    # Get date range from parameters
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    report_title = request.GET.get('report_title', 'Sales & Inventory Report')
+    
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except:
+        # Default to last 7 days if invalid dates
+        end_date = now().date()
+        start_date = end_date - timedelta(days=7)
+    
+    # Create response
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="mingos_report_{start_date}_to_{end_date}.pdf"'
+    
+    # Create PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#22c55e'),
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#3b82f6'),
+        spaceAfter=10,
+        spaceBefore=15
+    )
+    normal_style = styles['Normal']
+    
+    # Title
+    elements.append(Paragraph(f"<b>{report_title}</b>", title_style))
+    elements.append(Paragraph(f"<b>Mingos Canteen Management System</b>", styles['Heading3']))
+    elements.append(Paragraph(f"Period: {start_date.strftime('%B %d, %Y')} to {end_date.strftime('%B %d, %Y')}", normal_style))
+    elements.append(Paragraph(f"Generated on: {now().strftime('%B %d, %Y at %I:%M %p')}", normal_style))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Query data for date range
+    orders = CustomerOrder.objects.filter(
+        order_datetime__date__gte=start_date,
+        order_datetime__date__lte=end_date
+    )
+    
+    total_revenue = orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_orders = orders.count()
+    avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
+    
+    # Summary Section
+    elements.append(Paragraph("<b>Executive Summary</b>", heading_style))
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Revenue', f'₹ {total_revenue:,.2f}'],
+        ['Total Orders', f'{total_orders}'],
+        ['Average Order Value', f'₹ {avg_order_value:,.2f}'],
+        ['Number of Days', f'{(end_date - start_date).days + 1}'],
+    ]
+    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Daily Revenue Data
+    daily_sales = {}
+    current_date = start_date
+    while current_date <= end_date:
+        daily_sales[current_date] = 0
+        current_date += timedelta(days=1)
+    
+    daily_data = (
+        orders.extra({'date': 'DATE(order_datetime)'})
+        .values('date')
+        .annotate(total=Sum('total_amount'))
+        .order_by('date')
+    )
+    
+    for row in daily_data:
+        daily_sales[row['date']] = float(row['total'] or 0)
+    
+    # Daily Revenue Chart
+    if len(daily_sales) > 0:
+        elements.append(Paragraph("<b>Daily Revenue Analysis</b>", heading_style))
+        
+        drawing = Drawing(500, 200)
+        chart = VerticalBarChart()
+        chart.x = 50
+        chart.y = 50
+        chart.height = 125
+        chart.width = 400
+        chart.data = [list(daily_sales.values())]
+        chart.categoryAxis.categoryNames = [d.strftime('%d %b') for d in daily_sales.keys()]
+        chart.valueAxis.valueMin = 0
+        chart.bars[0].fillColor = colors.HexColor('#22c55e')
+        
+        drawing.add(chart)
+        elements.append(drawing)
+        elements.append(Spacer(1, 0.2*inch))
+    
+    # Top Selling Items
+    elements.append(Paragraph("<b>Top Selling Items</b>", heading_style))
+    
+    top_items = (
+        OrderItem.objects.filter(customer_order__in=orders)
+        .values('menu_item__name')
+        .annotate(
+            total_qty=Sum('quantity'),
+            total_sales=Sum('line_amount')
+        )
+        .order_by('-total_sales')[:10]
+    )
+    
+    if top_items:
+        items_data = [['Rank', 'Item Name', 'Quantity Sold', 'Revenue (₹)']]
+        for idx, item in enumerate(top_items, 1):
+            items_data.append([
+                str(idx),
+                item['menu_item__name'],
+                str(item['total_qty']),
+                f"₹ {item['total_sales']:,.2f}"
+            ])
+        
+        items_table = Table(items_data, colWidths=[0.6*inch, 2.5*inch, 1.2*inch, 1.2*inch])
+        items_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#22c55e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        elements.append(items_table)
+    else:
+        elements.append(Paragraph("No sales data available for this period.", normal_style))
+    
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Category-wise Revenue
+    elements.append(Paragraph("<b>Category-wise Performance</b>", heading_style))
+    
+    category_data = (
+        OrderItem.objects.filter(customer_order__in=orders)
+        .values('menu_item__category__name')
+        .annotate(total=Sum('line_amount'))
+        .order_by('-total')
+    )
+    
+    if category_data:
+        cat_table_data = [['Category', 'Revenue (₹)', 'Percentage']]
+        for cat in category_data:
+            percentage = (float(cat['total']) / float(total_revenue) * 100) if total_revenue > 0 else 0
+            cat_table_data.append([
+                cat['menu_item__category__name'] or 'Uncategorized',
+                f"₹ {cat['total']:,.2f}",
+                f"{percentage:.1f}%"
+            ])
+        
+        cat_table = Table(cat_table_data, colWidths=[2*inch, 1.8*inch, 1.2*inch])
+        cat_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ]))
+        elements.append(cat_table)
+    
+    elements.append(PageBreak())
+    
+    # Inventory Status
+    elements.append(Paragraph("<b>Current Inventory Status</b>", heading_style))
+    
+    all_ingredients = Ingredient.objects.annotate(
+        stock_percentage=Case(
+            When(reorder_level__gt=0, then=(
+                F('current_stock_qty') * 100 / F('reorder_level')
+            )),
+            default=Value(100),
+            output_field=FloatField()
+        )
+    ).order_by('current_stock_qty')[:15]  # Top 15 to fit on page
+    
+    if all_ingredients:
+        inv_data = [['Ingredient', 'Current Stock', 'Reorder Level', 'Status']]
+        for ing in all_ingredients:
+            if ing.current_stock_qty < ing.safety_stock_qty:
+                status = 'Critical'
+            elif ing.current_stock_qty < ing.reorder_level:
+                status = 'Low Stock'
+            else:
+                status = 'Healthy'
+            
+            inv_data.append([
+                ing.name,
+                f"{ing.current_stock_qty:.1f} {ing.unit_of_measure}",
+                f"{ing.reorder_level:.1f}",
+                status
+            ])
+        
+        inv_table = Table(inv_data, colWidths=[2*inch, 1.5*inch, 1.2*inch, 1*inch])
+        inv_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f59e0b')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        elements.append(inv_table)
+    
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Low Stock Alerts
+    low_stock = Ingredient.objects.filter(
+        current_stock_qty__lt=F('reorder_level')
+    ).count()
+    
+    elements.append(Paragraph(f"<b>Low Stock Alerts: {low_stock} items</b>", normal_style))
+    
+    # Footer
+    elements.append(Spacer(1, 0.5*inch))
+    elements.append(Paragraph("─" * 100, normal_style))
+    elements.append(Paragraph(
+        "<i>This report was automatically generated by Mingos Canteen Management System</i>",
+        ParagraphStyle('Footer', parent=normal_style, fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
+    ))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    # Get PDF value and close buffer
+    pdf = buffer.getvalue()
+    buffer.close()
+    response.write(pdf)
+    
+    return response

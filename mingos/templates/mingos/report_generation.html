@@ -1,0 +1,120 @@
+{% extends "mingos/base.html" %} 
+{% block title %}Report Generation – Mingos{% endblock %} 
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Report Generation</div>
+    <div class="page-subtitle">
+      Generate custom reports for any date range
+    </div>
+  </div>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+  <div class="card-header">
+    <div class="card-title">Custom Date Range Report</div>
+  </div>
+  
+  <form method="get" action="{% url 'generate_report_pdf' %}" style="padding: 20px;">
+    <div style="margin-bottom: 18px;">
+      <label style="display: block; margin-bottom: 6px; font-size: 0.9rem; color: #9ca3af;">Start Date</label>
+      <input 
+        type="date" 
+        name="start_date" 
+        id="startDate"
+        required
+        value="{{ default_start_date }}"
+        style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb; font-size: 0.95rem;"
+      />
+    </div>
+
+    <div style="margin-bottom: 18px;">
+      <label style="display: block; margin-bottom: 6px; font-size: 0.9rem; color: #9ca3af;">End Date</label>
+      <input 
+        type="date" 
+        name="end_date" 
+        id="endDate"
+        required
+        value="{{ default_end_date }}"
+        style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb; font-size: 0.95rem;"
+      />
+    </div>
+
+    <div style="margin-bottom: 18px;">
+      <label style="display: block; margin-bottom: 6px; font-size: 0.9rem; color: #9ca3af;">Report Title (Optional)</label>
+      <input 
+        type="text" 
+        name="report_title" 
+        placeholder="e.g., Weekly Sales Report"
+        style="width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(55,65,81,0.9); background: #020617; color: #e5e7eb; font-size: 0.95rem;"
+      />
+    </div>
+
+    <button 
+      type="submit"
+      style="width: 100%; padding: 12px 20px; border-radius: 999px; border: none; cursor: pointer; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-weight: 600; font-size: 0.95rem;"
+    >
+      📥 Download PDF Report
+    </button>
+  </form>
+
+  <div style="padding: 0 20px 20px; border-top: 1px solid rgba(31,41,55,0.8); margin-top: 20px; padding-top: 20px;">
+    <div style="font-size: 0.85rem; color: #9ca3af;">
+      <strong>Report will include:</strong>
+      <ul style="margin-top: 8px; padding-left: 20px;">
+        <li>📊 Sales Analytics (daily revenue, top items, category breakdown)</li>
+        <li>📦 Inventory Status (current stock levels, low stock alerts)</li>
+        <li>🛒 Order Summary (total orders, average order value)</li>
+        <li>📈 Revenue Charts and Graphs</li>
+        <li>🍔 Detailed item-wise sales data</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 20px auto 0;">
+  <div class="card-header">
+    <div class="card-title">Quick Report Options</div>
+  </div>
+  
+  <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <a href="?days=7" class="pill" style="padding: 10px 16px; text-align: center; background: rgba(34, 197, 94, 0.2); color: #22c55e; text-decoration: none;">
+      Last 7 Days
+    </a>
+    <a href="?days=30" class="pill" style="padding: 10px 16px; text-align: center; background: rgba(59, 130, 246, 0.2); color: #3b82f6; text-decoration: none;">
+      Last 30 Days
+    </a>
+    <a href="?days=90" class="pill" style="padding: 10px 16px; text-align: center; background: rgba(168, 85, 247, 0.2); color: #a855f7; text-decoration: none;">
+      Last 90 Days
+    </a>
+    <a href="?month=current" class="pill" style="padding: 10px 16px; text-align: center; background: rgba(245, 158, 11, 0.2); color: #f59e0b; text-decoration: none;">
+      Current Month
+    </a>
+  </div>
+</div>
+
+<script>
+  // Handle quick options
+  const urlParams = new URLSearchParams(window.location.search);
+  const days = urlParams.get('days');
+  const month = urlParams.get('month');
+  
+  if (days) {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - parseInt(days));
+    
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+  }
+  
+  if (month === 'current') {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+  }
+</script>
+
+{% endblock %}

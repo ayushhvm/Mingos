@@ -287,6 +287,13 @@
         >
           📦 Inventory Analytics
         </a>
+
+        <a
+          href="{% url 'report_generation' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'report_generation' %}active{% endif %}"
+        >
+          📄 Report Generation
+        </a>
       </div>
 
       <!-- Admin -->
